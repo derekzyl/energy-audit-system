@@ -60,3 +60,4 @@ String WasteDetector::generateAlertMessage(const DeviceInfo& device) {
   
   return message;
 }
+

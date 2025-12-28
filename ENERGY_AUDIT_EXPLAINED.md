@@ -421,3 +421,4 @@ Based on waste detection, the system can suggest:
 
 **Last Updated**: 2025  
 **Version**: 1.0.0
+

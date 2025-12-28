@@ -103,3 +103,4 @@ float CurrentSensor::readPowerFactor() {
     return 0.90;  // Higher PF for larger loads
   }
 }
+

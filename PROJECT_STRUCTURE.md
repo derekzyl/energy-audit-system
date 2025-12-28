@@ -183,3 +183,4 @@ pio device monitor  # View serial output
 - History is stored in RAM (circular buffer, max 1000 entries)
 - Wireless node transmits every 5 seconds
 - PZEM sensors are read every 2 seconds
+
