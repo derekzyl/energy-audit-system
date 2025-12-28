@@ -1,6 +1,6 @@
 # Bill of Materials (BOM)
 
-Complete parts list for the IoT Enabled Portable Energy Audit System.
+Complete parts list for the IoT Enabled  Energy Audit System.
 
 ## Main Auditor ESP32
 
@@ -95,5 +95,6 @@ Complete parts list for the IoT Enabled Portable Energy Audit System.
 ---
 
 **Last Updated**: 2025  
+
 
 

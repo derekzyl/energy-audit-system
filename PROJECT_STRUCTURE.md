@@ -184,3 +184,4 @@ pio device monitor  # View serial output
 - Wireless node transmits every 5 seconds
 - PZEM sensors are read every 2 seconds
 
+
