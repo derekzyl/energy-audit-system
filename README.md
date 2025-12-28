@@ -1,4 +1,4 @@
-# IoT Enabled Portable Energy Audit System
+# IoT Enabled  Energy Audit System
 
 A comprehensive, offline energy monitoring solution for real-time power consumption analysis, waste detection, and intelligent energy auditing across multiple wired and wireless loads.
 
