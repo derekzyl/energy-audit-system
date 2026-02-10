@@ -33,3 +33,10 @@ final goalProgressProvider = FutureProvider.autoDispose<EnergyGoalProgress?>((
   final deviceId = ref.watch(deviceIdProvider);
   return api.getGoalProgress(deviceId);
 });
+
+final sensorConfigProvider =
+    FutureProvider.autoDispose<List<EnergySensorConfig>>((ref) async {
+      final api = ref.watch(apiServiceProvider);
+      final deviceId = ref.watch(deviceIdProvider);
+      return api.getSensorConfigs(deviceId);
+    });

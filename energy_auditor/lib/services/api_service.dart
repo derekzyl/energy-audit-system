@@ -98,4 +98,34 @@ class ApiService {
       return false;
     }
   }
+
+  Future<List<EnergySensorConfig>> getSensorConfigs(String deviceId) async {
+    await _initBaseUrl();
+    try {
+      final response = await _dio.get('/energy/devices/$deviceId/config');
+      return (response.data as List)
+          .map((e) => EnergySensorConfig.fromJson(e))
+          .toList();
+    } catch (e) {
+      debugPrint('Error fetching sensor configs: $e');
+      return [];
+    }
+  }
+
+  Future<bool> updateSensorConfig(
+    String deviceId,
+    EnergySensorConfig config,
+  ) async {
+    await _initBaseUrl();
+    try {
+      await _dio.post(
+        '/energy/devices/$deviceId/config',
+        data: config.toJson(),
+      );
+      return true;
+    } catch (e) {
+      debugPrint('Error updating sensor config: $e');
+      return false;
+    }
+  }
 }

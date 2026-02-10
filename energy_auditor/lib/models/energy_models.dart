@@ -104,3 +104,31 @@ class EnergyAlert {
     );
   }
 }
+
+class EnergySensorConfig {
+  final int sensorNumber;
+  final String customLabel;
+  final String applianceCategory;
+
+  EnergySensorConfig({
+    required this.sensorNumber,
+    required this.customLabel,
+    required this.applianceCategory,
+  });
+
+  factory EnergySensorConfig.fromJson(Map<String, dynamic> json) {
+    return EnergySensorConfig(
+      sensorNumber: json['sensor_number'] ?? 0,
+      customLabel: json['custom_label'] ?? '',
+      applianceCategory: json['appliance_category'] ?? 'General',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'sensor_number': sensorNumber,
+      'custom_label': customLabel,
+      'appliance_category': applianceCategory,
+    };
+  }
+}
