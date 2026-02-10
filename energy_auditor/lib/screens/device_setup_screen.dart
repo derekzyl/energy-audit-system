@@ -27,7 +27,8 @@ class _DeviceSetupScreenState extends ConsumerState<DeviceSetupScreen> {
     _urlController.text =
         prefs.getString('api_url') ??
         'https://xenophobic-netta-cybergenii-1584fde7.koyeb.app';
-    _deviceIdController.text = prefs.getString('device_id') ?? 'ESP32_A1B2C3D4';
+    _deviceIdController.text =
+        prefs.getString('device_id') ?? 'ESP32_ENERGY_MONITOR';
   }
 
   Future<void> _saveSettings() async {

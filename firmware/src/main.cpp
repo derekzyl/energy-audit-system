@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
@@ -44,7 +45,7 @@ float zeroOffset2 = 2.5;
 
 // WiFi & Backend
 String backendUrl = "https://xenophobic-netta-cybergenii-1584fde7.koyeb.app"; // Default backend URL
-String deviceId = "ESP32_" + String((uint32_t)ESP.getEfuseMac(), HEX);
+String deviceId = "ESP32_ENERGY_MONITOR"; // Constant ID for App consistency
 
 // Timers
 unsigned long lastRead = 0;
@@ -62,10 +63,12 @@ String getDashboardJSON();
 void setup() {
   Serial.begin(115200);
   
+  // Set ADC Attenuation for full 3.3V range
+  analogSetAttenuation(ADC_11db);
+  
   // Init Sensors
   pinMode(ACS712_SENSOR_1_PIN, INPUT);
   pinMode(ACS712_SENSOR_2_PIN, INPUT);
-  pinMode(LDR_PIN, INPUT);
   pinMode(LDR_PIN, INPUT);
   dht.begin();
 
@@ -169,15 +172,32 @@ float readACS712(int pin, float zeroOffset) {
   }
   
   float rmsCurrent = sqrt(currentSum / sampleCount);
-  if (rmsCurrent < 0.05) rmsCurrent = 0.0; // Noise filter
+  if (rmsCurrent < 0.10) rmsCurrent = 0.0; // Increased noise filter
+  
+  // Debug (Throttled)
+  static unsigned long lastDebug = 0;
+  if (millis() - lastDebug > 5000 && pin == ACS712_SENSOR_1_PIN) {
+      lastDebug = millis();
+      // Print first sample's voltage as partial debug
+      int raw = analogRead(pin);
+      float v = (raw / ADC_RESOLUTION) * ADC_VOLTAGE_REF * VOLTAGE_DIVIDER_RATIO;
+      Serial.printf("[DEBUG] Pin: %d, Raw: %d, Volts: %.2f, Offset: %.2f, RMS: %.2fA\n", pin, raw, v, zeroOffset, rmsCurrent);
+  }
+  
   return rmsCurrent;
 }
 
+// --- Calibration ---
 void calibrateSensors() {
-  Serial.println("Calibrating...");
+  Serial.println("Starting Calibration...");
   long sum1 = 0;
   long sum2 = 0;
   int samples = 1000;
+  
+  // Update LCD
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Calibrating...");
   
   for(int i=0; i<samples; i++) {
     sum1 += analogRead(ACS712_SENSOR_1_PIN);
@@ -188,45 +208,81 @@ void calibrateSensors() {
   float avgAdc1 = sum1 / (float)samples;
   float avgAdc2 = sum2 / (float)samples;
 
+  Serial.printf("Avg ADC 1: %.2f\n", avgAdc1);
+  Serial.printf("Avg ADC 2: %.2f\n", avgAdc2);
+
   zeroOffset1 = (avgAdc1 / ADC_RESOLUTION) * ADC_VOLTAGE_REF * VOLTAGE_DIVIDER_RATIO;
   zeroOffset2 = (avgAdc2 / ADC_RESOLUTION) * ADC_VOLTAGE_REF * VOLTAGE_DIVIDER_RATIO;
   
+  // Sanity Check (ACS712 output should be ~2.5V or VCC/2)
+  if (zeroOffset1 < 1.0 || zeroOffset1 > 4.0) {
+      Serial.println("WARNING: Calibration Offset 1 out of expected range!");
+      lcd.setCursor(0,1);
+      lcd.print("Error: Range!");
+  }
+
   preferences.putFloat("offset1", zeroOffset1);
   preferences.putFloat("offset2", zeroOffset2);
   
   Serial.printf("Calibrated offsets: %.2f V, %.2f V\n", zeroOffset1, zeroOffset2);
+  
+  if (zeroOffset1 >= 1.0 && zeroOffset1 <= 4.0) {
+      lcd.setCursor(0,1);
+      lcd.print("Done! " + String(zeroOffset1, 1) + "V");
+  }
+  delay(2000);
 }
 
 // --- Backend Communication ---
+// --- Backend Communication ---
 void sendToBackend() {
-  HTTPClient http;
-  String url = backendUrl + "/energy/readings";
-  http.begin(url);
-  http.addHeader("Content-Type", "application/json");
-  
-  StaticJsonDocument<512> doc;
-  doc["device_id"] = deviceId;
-  doc["sensor_1"]["current_amps"] = current1;
-  doc["sensor_1"]["watts"] = watts1;
-  doc["sensor_1"]["voltage"] = DEFAULT_VOLTAGE; // Add support for voltage sensor later
-  doc["sensor_2"]["current_amps"] = current2;
-  doc["sensor_2"]["watts"] = watts2;
-  doc["sensor_2"]["voltage"] = DEFAULT_VOLTAGE;
-  doc["environment"]["temperature_c"] = temperature;
-  doc["environment"]["humidity_percent"] = humidity;
-  doc["environment"]["light_raw"] = lightRaw;
-  doc["environment"]["light_lux"] = lightLux;
-  
-  String payload;
-  serializeJson(doc, payload);
-  
-  int httpResponseCode = http.POST(payload);
-  if (httpResponseCode > 0) {
-    Serial.printf("Backend Response: %d\n", httpResponseCode);
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  WiFiClientSecure *client = new WiFiClientSecure;
+  if(client) {
+    client->setInsecure(); // Ignore SSL certificate validation
+    HTTPClient http;
+    
+    String url = backendUrl + "/energy/readings";
+    Serial.print("Sending to: ");
+    Serial.println(url);
+    
+    // http.begin(*client, url); // For newer ESP32 cores
+    // Or just http.begin(url) if global instace isn't needed, but explicit client is safer for HTTPS
+    
+    if (http.begin(*client, url)) {
+        http.addHeader("Content-Type", "application/json");
+        
+        StaticJsonDocument<512> doc;
+        doc["device_id"] = deviceId;
+        doc["sensor_1"]["current_amps"] = current1;
+        doc["sensor_1"]["watts"] = watts1;
+        doc["sensor_1"]["voltage"] = DEFAULT_VOLTAGE;
+        doc["sensor_2"]["current_amps"] = current2;
+        doc["sensor_2"]["watts"] = watts2;
+        doc["sensor_2"]["voltage"] = DEFAULT_VOLTAGE;
+        doc["environment"]["temperature_c"] = temperature;
+        doc["environment"]["humidity_percent"] = humidity;
+        doc["environment"]["light_raw"] = lightRaw;
+        doc["environment"]["light_lux"] = lightLux;
+        
+        String payload;
+        serializeJson(doc, payload);
+        
+        int httpResponseCode = http.POST(payload);
+        if (httpResponseCode > 0) {
+          Serial.printf("Backend Response: %d\n", httpResponseCode);
+        } else {
+          Serial.printf("Backend Error: %s\n", http.errorToString(httpResponseCode).c_str());
+        }
+        http.end();
+    } else {
+      Serial.println("Unable to connect to backend");
+    }
+    delete client;
   } else {
-    Serial.printf("Backend Error: %s\n", http.errorToString(httpResponseCode).c_str());
+    Serial.println("Unable to create client");
   }
-  http.end();
 }
 
 // --- Web Server ---
