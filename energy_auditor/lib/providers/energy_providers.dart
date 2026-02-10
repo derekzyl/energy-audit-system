@@ -7,7 +7,7 @@ import '../services/api_service.dart';
 final apiServiceProvider = Provider<ApiService>((ref) => ApiService());
 
 final deviceIdProvider = StateProvider<String>(
-  (ref) => "ESP32_A1B2C3D4",
+  (ref) => "ESP32_ENERGY_MONITOR",
 ); // Default/Mock
 
 final readingsProvider = FutureProvider.autoDispose<List<EnergyReading>>((

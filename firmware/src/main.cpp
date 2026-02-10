@@ -18,7 +18,7 @@
 #define ACS712_SENSITIVITY 0.066 // 66mV/A for 30A module
 #define ADC_VOLTAGE_REF 3.3
 #define ADC_RESOLUTION 4095.0
-#define VOLTAGE_DIVIDER_RATIO (5.0 / 3.3) // To scale 5V output to 3.3V ESP32
+#define VOLTAGE_DIVIDER_RATIO 1.0 // Set to 1.0 if sensor connected directly (no divider)
 
 #define DEFAULT_VOLTAGE 220.0
 #define DEFAULT_PF 0.95
