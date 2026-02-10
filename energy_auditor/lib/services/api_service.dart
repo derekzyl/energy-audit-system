@@ -14,7 +14,9 @@ class ApiService {
 
   Future<void> _initBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
-    _baseUrl = prefs.getString('api_url') ?? 'http://192.168.1.100:8000';
+    _baseUrl =
+        prefs.getString('api_url') ??
+        'https://xenophobic-netta-cybergenii-1584fde7.koyeb.app';
     _dio.options.baseUrl = _baseUrl!;
   }
 
@@ -59,6 +61,41 @@ class ApiService {
       // Assuming audit triggers on post reading
     } catch (e) {
       debugPrint('Error triggering audit: $e');
+    }
+  }
+
+  Future<EnergyGoalProgress?> getGoalProgress(String deviceId) async {
+    await _initBaseUrl();
+    try {
+      final response = await _dio.get('/energy/goals/progress/$deviceId');
+      return EnergyGoalProgress.fromJson(response.data);
+    } catch (e) {
+      debugPrint('Error fetching goal progress: $e');
+      return null;
+    }
+  }
+
+  Future<bool> setGoal(
+    String deviceId,
+    double target,
+    DateTime start,
+    DateTime end,
+  ) async {
+    await _initBaseUrl();
+    try {
+      await _dio.post(
+        '/energy/goals',
+        data: {
+          'device_id': deviceId,
+          'target_kwh': target,
+          'period_start': start.toIso8601String(),
+          'period_end': end.toIso8601String(),
+        },
+      );
+      return true;
+    } catch (e) {
+      debugPrint('Error setting goal: $e');
+      return false;
     }
   }
 }

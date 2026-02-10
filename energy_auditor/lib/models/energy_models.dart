@@ -8,6 +8,7 @@ class EnergyReading {
   final double temperature;
   final double humidity;
   final int lightLux;
+  final double? outdoorTemp;
 
   EnergyReading({
     required this.deviceId,
@@ -19,6 +20,7 @@ class EnergyReading {
     required this.temperature,
     required this.humidity,
     required this.lightLux,
+    this.outdoorTemp,
   });
 
   factory EnergyReading.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,32 @@ class EnergyReading {
       temperature: (json['temperature_c'] ?? 0).toDouble(),
       humidity: (json['humidity_percent'] ?? 0).toDouble(),
       lightLux: json['light_lux'] ?? 0,
+      outdoorTemp: json['outdoor_temp_c'] != null
+          ? (json['outdoor_temp_c']).toDouble()
+          : null,
+    );
+  }
+}
+
+class EnergyGoalProgress {
+  final bool hasGoal;
+  final double consumedKwh;
+  final double targetKwh;
+  final double percentage;
+
+  EnergyGoalProgress({
+    required this.hasGoal,
+    required this.consumedKwh,
+    required this.targetKwh,
+    required this.percentage,
+  });
+
+  factory EnergyGoalProgress.fromJson(Map<String, dynamic> json) {
+    return EnergyGoalProgress(
+      hasGoal: json['has_goal'] ?? false,
+      consumedKwh: (json['consumed_kwh'] ?? 0).toDouble(),
+      targetKwh: (json['target_kwh'] ?? 0).toDouble(),
+      percentage: (json['percentage'] ?? 0).toDouble(),
     );
   }
 }

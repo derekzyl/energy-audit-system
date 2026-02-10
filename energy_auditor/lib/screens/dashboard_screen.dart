@@ -39,11 +39,19 @@ class DashboardScreen extends ConsumerWidget {
           // Force refresh of providers
           ref.invalidate(readingsProvider);
           ref.invalidate(alertsProvider);
+          ref.invalidate(goalProgressProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
             _buildReadingsSection(readingsAsync),
+            _buildReadingsSection(readingsAsync),
+            const SizedBox(height: 16),
+            const Text(
+              "Energy Goal",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            _buildGoalSection(ref),
             const SizedBox(height: 16),
             const Text(
               "Active Alerts",
@@ -59,8 +67,9 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildReadingsSection(AsyncValue<List<EnergyReading>> readingsAsync) {
     return readingsAsync.when(
       data: (readings) {
-        if (readings.isEmpty)
+        if (readings.isEmpty) {
           return const Center(child: Text('No data waiting...'));
+        }
         final latest = readings.first;
         return Column(
           children: [
@@ -143,11 +152,12 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildAlertsSection(AsyncValue<List<EnergyAlert>> alertsAsync) {
     return alertsAsync.when(
       data: (alerts) {
-        if (alerts.isEmpty)
+        if (alerts.isEmpty) {
           return const Padding(
             padding: EdgeInsets.all(20),
             child: Text("No active alerts. System efficient."),
           );
+        }
         return Column(
           children: alerts
               .map(
@@ -177,5 +187,102 @@ class DashboardScreen extends ConsumerWidget {
     if (severity == 'critical') return Colors.red;
     if (severity == 'warning') return Colors.orange;
     return Colors.blue;
+  }
+
+  Widget _buildGoalSection(WidgetRef ref) {
+    final goalAsync = ref.watch(goalProgressProvider);
+    return goalAsync.when(
+      data: (goal) {
+        if (goal == null || !goal.hasGoal) {
+          return Card(
+            child: ListTile(
+              title: const Text("No Monthly Goal Set"),
+              trailing: ElevatedButton(
+                onPressed: () => _showSetGoalDialog(ref.context, ref),
+                child: const Text("Set Goal"),
+              ),
+            ),
+          );
+        }
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Target: ${goal.targetKwh} kWh"),
+                    Text("${goal.percentage}% Used"),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                LinearProgressIndicator(
+                  value: (goal.percentage / 100).clamp(0, 1).toDouble(),
+                  backgroundColor: Colors.grey.shade300,
+                  color: goal.percentage > 90 ? Colors.red : Colors.green,
+                  minHeight: 10,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "${goal.consumedKwh.toStringAsFixed(2)} kWh consumed this month",
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => _showSetGoalDialog(ref.context, ref),
+                    child: const Text("Edit Goal"),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      loading: () => const LinearProgressIndicator(),
+      error: (e, s) => const Text("Error loading goal"),
+    );
+  }
+
+  void _showSetGoalDialog(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Set Monthly Goal (kWh)"),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: "Target kWh"),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final target = double.tryParse(controller.text);
+              if (target != null) {
+                final deviceId = ref.read(deviceIdProvider);
+                final now = DateTime.now();
+                final start = DateTime(now.year, now.month, 1);
+                final end = DateTime(now.year, now.month + 1, 0);
+
+                final success = await ref
+                    .read(apiServiceProvider)
+                    .setGoal(deviceId, target, start, end);
+                if (success) {
+                  ref.invalidate(goalProgressProvider);
+                  if (context.mounted) Navigator.pop(ctx);
+                }
+              }
+            },
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
   }
 }

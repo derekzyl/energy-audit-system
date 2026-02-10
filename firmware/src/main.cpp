@@ -6,6 +6,7 @@
 #include <DHT.h>
 #include <Preferences.h>
 #include <HTTPClient.h>
+#include <LiquidCrystal_I2C.h>
 
 // --- Configuration ---
 #define ACS712_SENSOR_1_PIN 34
@@ -25,6 +26,7 @@
 AsyncWebServer server(80);
 DHT dht(DHT_PIN, DHT22);
 Preferences preferences;
+LiquidCrystal_I2C lcd(0x27, 16, 2); // Set the LCD address to 0x27 for a 16 chars and 2 line display
 
 // Sensor Data
 float current1 = 0.0;
@@ -41,7 +43,7 @@ float zeroOffset1 = 2.5; // Default 2.5V (will be calibrated)
 float zeroOffset2 = 2.5;
 
 // WiFi & Backend
-String backendUrl = ""; 
+String backendUrl = "https://xenophobic-netta-cybergenii-1584fde7.koyeb.app"; // Default backend URL
 String deviceId = "ESP32_" + String((uint32_t)ESP.getEfuseMac(), HEX);
 
 // Timers
@@ -64,13 +66,22 @@ void setup() {
   pinMode(ACS712_SENSOR_1_PIN, INPUT);
   pinMode(ACS712_SENSOR_2_PIN, INPUT);
   pinMode(LDR_PIN, INPUT);
+  pinMode(LDR_PIN, INPUT);
   dht.begin();
+
+  // Init LCD
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0,0);
+  lcd.print("Energy Monitor");
+  lcd.setCursor(0,1);
+  lcd.print("Booting...");
 
   // Load Preferences
   preferences.begin("energy-audit", false);
   zeroOffset1 = preferences.getFloat("offset1", 2.5);
   zeroOffset2 = preferences.getFloat("offset2", 2.5);
-  backendUrl = preferences.getString("backendUrl", "http://192.168.1.100:8000"); // Default
+  backendUrl = preferences.getString("backendUrl", "https://xenophobic-netta-cybergenii-1584fde7.koyeb.app"); // Default
 
   // Init WiFi (Dual Mode logic inside)
   initWiFi();
@@ -110,6 +121,36 @@ void loop() {
       sendToBackend();
     }
     lastSend = now;
+  }
+  
+  // Update LCD (every 2 seconds)
+  static unsigned long lastLcdUpdate = 0;
+  static int lcdPage = 0;
+  if (now - lastLcdUpdate >= 2000) {
+    lastLcdUpdate = now;
+    lcdPage = (lcdPage + 1) % 3;
+    
+    lcd.clear();
+    if (lcdPage == 0) {
+      lcd.setCursor(0,0);
+      lcd.print("S1: " + String(watts1, 0) + "W " + String(current1, 1) + "A");
+      lcd.setCursor(0,1);
+      lcd.print("S2: " + String(watts2, 0) + "W " + String(current2, 1) + "A");
+    } else if (lcdPage == 1) {
+      lcd.setCursor(0,0);
+      lcd.print("Temp: " + String(temperature, 1) + "C");
+      lcd.setCursor(0,1);
+      lcd.print("Hum : " + String(humidity, 0) + "%");
+    } else if (lcdPage == 2) {
+      lcd.setCursor(0,0);
+      if (WiFi.status() == WL_CONNECTED) {
+        lcd.print("IP:" + WiFi.localIP().toString());
+      } else {
+         lcd.print("WiFi: Connecting");
+      }
+      lcd.setCursor(0,1);
+      lcd.print("Lux : " + String(lightLux));
+    }
   }
 }
 
@@ -251,11 +292,19 @@ void initWebServer() {
   server.begin();
 }
 
+// --- WiFi ---
 void initWiFi() {
-  WiFi.mode(WIFI_AP_STA);
-  WiFi.begin(); // Try last known credentials
+  Serial.println("Connecting to WiFi: cybergenii");
+  WiFi.mode(WIFI_AP_STA); // Dual Mode
   
-  // Create AP
+  // Try connecting to provided credentials
+  WiFi.begin("cybergenii", "12341234");
+  
+  // Create Config AP as fallback/concurrent
   WiFi.softAP("EnergyMonitor_Setup", "energy123");
-  Serial.println("AP Started: EnergyMonitor_Setup");
+  Serial.print("AP IP: ");
+  Serial.println(WiFi.softAPIP());
+
+  // Wait for connection (non-blocking in loop, but here we just start it)
+  // We will check status in loop or let it connect in background
 }

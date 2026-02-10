@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/energy_providers.dart';
 
 class AnalyticsScreen extends ConsumerWidget {
-  const AnalyticsScreen({Key? key}) : super(key: key);
+  const AnalyticsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -17,8 +17,9 @@ class AnalyticsScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(16.0),
         child: readingsAsync.when(
           data: (readings) {
-            if (readings.isEmpty)
+            if (readings.isEmpty) {
               return const Center(child: Text("No data for analytics"));
+            }
 
             // Prepare data for chart (reversed because API returns desc)
             final data = readings.take(20).toList().reversed.toList();
@@ -60,6 +61,20 @@ class AnalyticsScreen extends ConsumerWidget {
                           color: Colors.red,
                           dotData: FlDotData(show: false),
                         ),
+                        LineChartBarData(
+                          spots: data.asMap().entries.map((e) {
+                            // Scale temp x 100 to fit on chart roughly, or use secondary axis (complex)
+                            // For simple demo, just plot value * 10 to see trend
+                            return FlSpot(
+                              e.key.toDouble(),
+                              (e.value.outdoorTemp ?? 0) * 10,
+                            );
+                          }).toList(),
+                          isCurved: true,
+                          color: Colors.orange,
+                          dotData: FlDotData(show: false),
+                          dashArray: [5, 5],
+                        ),
                       ],
                     ),
                   ),
@@ -71,10 +86,14 @@ class AnalyticsScreen extends ConsumerWidget {
                     Icon(Icons.circle, color: Colors.blue, size: 12),
                     SizedBox(width: 5),
                     Text("Sensor 1"),
-                    SizedBox(width: 20),
+                    SizedBox(width: 15),
                     Icon(Icons.circle, color: Colors.red, size: 12),
                     SizedBox(width: 5),
                     Text("Sensor 2"),
+                    SizedBox(width: 15),
+                    Icon(Icons.circle, color: Colors.orange, size: 12),
+                    SizedBox(width: 5),
+                    Text("Outdoor Temp (x10)"),
                   ],
                 ),
               ],

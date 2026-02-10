@@ -25,7 +25,8 @@ class _DeviceSetupScreenState extends ConsumerState<DeviceSetupScreen> {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     _urlController.text =
-        prefs.getString('api_url') ?? 'http://192.168.1.100:8000';
+        prefs.getString('api_url') ??
+        'https://xenophobic-netta-cybergenii-1584fde7.koyeb.app';
     _deviceIdController.text = prefs.getString('device_id') ?? 'ESP32_A1B2C3D4';
   }
 

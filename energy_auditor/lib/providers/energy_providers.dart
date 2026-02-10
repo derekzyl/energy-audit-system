@@ -25,3 +25,11 @@ final alertsProvider = FutureProvider.autoDispose<List<EnergyAlert>>((
   final deviceId = ref.watch(deviceIdProvider);
   return api.getAlerts(deviceId);
 });
+
+final goalProgressProvider = FutureProvider.autoDispose<EnergyGoalProgress?>((
+  ref,
+) async {
+  final api = ref.watch(apiServiceProvider);
+  final deviceId = ref.watch(deviceIdProvider);
+  return api.getGoalProgress(deviceId);
+});
