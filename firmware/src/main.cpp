@@ -354,7 +354,7 @@ void initWiFi() {
   WiFi.mode(WIFI_AP_STA); // Dual Mode
   
   // Try connecting to provided credentials
-  WiFi.begin("cybergenii", "12341234");
+  WiFi.begin("MTN_4G_47649E", "9404ABD555");
   
   // Create Config AP as fallback/concurrent
   WiFi.softAP("EnergyMonitor_Setup", "energy123");
